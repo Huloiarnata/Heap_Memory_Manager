@@ -1,16 +1,16 @@
 /* Libraries & Macros */
-#include <stdint.h>
-
-#define MM_MAX_STRUCT_NAME 32 //Max size of structure name.
 #ifndef __MM__
+#define MM_MAX_STRUCT_NAME 32 //Max size of structure name.
 
-typedef struct vm_page_{
-    struct vm_page_ *next;
-    struct vm_page_ *prev;
-    struct vm_page_family_ *pg_family; /*back pointer*/
-    //block_meta_data_t block_meta_data;
-    char page_memory[0];
-} vm_page_t;
+#include <stdint.h>
+#include "gluethread/glthread.h"
+
+// enum for memory occupied or free.
+typedef enum{
+    MM_FALSE,
+    MM_TRUE
+} vm_bool_t;
+
 
 /*
 Structure to store registration information from application in userspace.
@@ -33,6 +33,42 @@ typedef struct virtual_memory_page_families{
     struct virtual_memory_page_families *next;
     virtual_memory_page_family_t virtual_memory_page_family[0];
 } virtual_memory_page_families_t;
+
+typedef struct block_meta_data{
+    vm_bool_t is_free;
+    uint32_t offset;
+    uint32_t block_size;
+    glthread_t priority_thread_glue;
+    struct block_meta_data *next;
+    struct block_meta_data *prev;
+
+
+}block_meta_data_t;
+
+typedef struct vm_page_{
+    struct vm_page_ *next;
+    struct vm_page_ *prev;
+    struct vm_page_family_ *pg_family; /*back pointer*/
+    block_meta_data_t block_meta_data;
+    char page_memory[0];
+} vm_page_t;
+
+#define offset_of(container_structure, field_name)  \
+    ((size_t)&(((container_structure *)0)->field_name))
+
+#define MM_GET_PAGE_FROM_META_BLOCK(block_meta_data_ptr)    \
+    ((void * )((char *)block_meta_data_ptr - block_meta_data_ptr->offset))
+
+#define NEXT_META_BLOCK(block_meta_data_ptr)                \
+    (block_meta_data_ptr->next_block)
+
+#define NEXT_META_BLOCK_BY_SIZE(block_meta_data_ptr)        \
+    (block_meta_data_t *)((char *)(block_meta_data_ptr + 1) \
+        + block_meta_data_ptr->block_size)
+
+#define PREV_META_BLOCK(block_meta_data_ptr)    \
+    (block_meta_data_ptr->prev_block)
+
 
 /* Max Number of family in vm_Families */
 #define MAX_Families_PER_VM_PAGE   \
