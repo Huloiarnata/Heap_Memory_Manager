@@ -49,8 +49,8 @@ typedef struct vm_page_{
     struct vm_page_ *next;
     struct vm_page_ *prev;
     struct vm_page_family_ *pg_family; /*back pointer*/
-    block_meta_data_t block_meta_data;
-    char page_memory[0];
+    block_meta_data_t block_meta_data; // meta block for vm page.
+    char page_memory[0]; // points to the start of data block.
 } vm_page_t;
 
 #define offset_of(container_structure, field_name)  \
@@ -69,7 +69,7 @@ typedef struct vm_page_{
 #define PREV_META_BLOCK(block_meta_data_ptr)    \
     (block_meta_data_ptr->prev_block)
 
-// This macros handles allocation of free space upon xmalloc.
+/* This macros handles allocation of free space upon xmalloc. */
 #define memory_manager_bind_block_for_allocation(allocated_meta_block, free_meta_block){\
     free_meta_block->prev_block = allocated_meta_block;\
     free_meta_block->next_block = allocated_meta_block->next_block;\
@@ -79,11 +79,25 @@ typedef struct vm_page_{
     }\
 }
 
-
+/* Marking VM Page empty. */
+#define MARK_VM_PAGE_EMPTY(vm_page_t_ptr){\
+    vm_page_t_ptr->next = NULL;\
+    vm_page_t_ptr->prev = NULL;\
+    vm_page_t_ptr->block_meta_data.is_free = MM_TRUE;\
+}
 /* Max Number of family in vm_Families */
 #define MAX_Families_PER_VM_PAGE   \
 (SYSTEM_PAGE_SIZE - sizeof(virtual_memory_page_families_t*)/\
 sizeof(virtual_memory_page_family_t))
+
+/* Looping Macro Begin for iteration of VM_Page*/
+#define Iterate_VM_Page_Begin(virtual_memory_page_family_ptr, curr){\
+    curr = virtual_memory_page_family_ptr->first_page;\
+    vm_page_t *next = NULL;\
+    for(;curr;curr=next){\
+        next = curr->next;
+    #define Iterative_VM_PAge_END(virtual_memory_page_family_ptr, curr)\
+    }}
 
 /* Looping Macro Begin for iterating family within Families */
 #define Iterate_Page_Families_Begin(virtual_memory_page_Families_ptr, curr){ \
