@@ -103,6 +103,15 @@ virtual_memory_page_family_t *lookup_page_family_by_name(char *struct_name){
     }
     return NULL;
 }
+/* Block merging of free data blocks in consecutive manner. */
+static void memory_manager_union_free_blocks(block_meta_data_t *first, block_meta_data_t * second){
+    assert(first->is_free==MM_TRUE && second->is_free==MM_TRUE);
+    first->block_size+=sizeof(block_meta_data_t) + second->block_size;
+    first->next = second->next;
+    if(second->next){
+        second->next->prev = first;
+    } 
+}
 
 /* Prints all the families registered with LMM */
 void memory_manager_print_registered_page_families(){
