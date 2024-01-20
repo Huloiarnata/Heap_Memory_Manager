@@ -69,6 +69,16 @@ typedef struct vm_page_{
 #define PREV_META_BLOCK(block_meta_data_ptr)    \
     (block_meta_data_ptr->prev_block)
 
+// This macros handles allocation of free space upon xmalloc.
+#define memory_manager_bind_block_for_allocation(allocated_meta_block, free_meta_block){\
+    free_meta_block->prev_block = allocated_meta_block;\
+    free_meta_block->next_block = allocated_meta_block->next_block;\
+    allocated_meta_block->next_block = free_meta_block;\
+    if(free_meta_block->next_block){\
+        free_meta_block->next_block->prev_block = free_meta_block;\
+    }\
+}
+
 
 /* Max Number of family in vm_Families */
 #define MAX_Families_PER_VM_PAGE   \
