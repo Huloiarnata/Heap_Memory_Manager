@@ -12,6 +12,50 @@ static size_t SYSTEM_PAGE_SIZE = 0;
 /* Global variable to hold pointer to first vm page for Families */
 static virtual_memory_page_families_t *first_vm_page_for_families = NULL;
 
+/* Allocate new VM Page */
+vm_page_t *allocate_vm_page(virtual_memory_page_family_t* virtual_memory_page_family){
+    vm_page_t *vm_page = memory_manager_get_new_vm_from_kernel(1);
+
+    MARK_VM_PAGE_EMPTY(vm_page);
+
+    vm_page->block_meta_data.block_size = memory_manager_max_space_allocatable_memory(1);
+    vm_page->block_meta_data.offset = offset_of(vm_page_t, block_meta_data);
+
+    vm_page->next = NULL;
+    vm_page->prev = NULL;
+
+    vm_page->pg_family = virtual_memory_page_family;
+    if(!virtual_memory_page_family->first_page){
+        virtual_memory_page_family->first_page = vm_page;
+        return vm_page;
+    }
+
+    vm_page->next = virtual_memory_page_family->first_page;
+    virtual_memory_page_family->first_page->prev = vm_page;
+    virtual_memory_page_family->first_page = vm_page;
+    return vm_page;
+}
+
+/* To delete and free VM Page */
+void memory_manager_page_delete_and_free(vm_page_t* vm_page){
+    virtual_memory_page_family_t* virtual_memory_page_family = vm_page->pg_family;
+    if(virtual_memory_page_family->first_page == vm_page){
+        virtual_memory_page_family->first_page = vm_page->next;
+        if(vm_page->next){
+            vm_page->next->prev = NULL;
+        }
+        vm_page->next = NULL;
+        vm_page->prev = NULL;
+        memory_manager_release_vm_to_kernel((void*)vm_page, 1);
+        return;
+    }
+    if(vm_page->next){
+        vm_page->next->prev = vm_page->prev;
+        vm_page->prev->next = vm_page->next;
+        memory_manager_release_vm_to_kernel((void*)vm_page, 1);
+    }
+}
+
 /* Memory Manager Initializer: computing the system page size. */
 void memory_manager_init() {
     // Size of virtual memory page is constant on the system (8192 Bytes on most system)
@@ -111,6 +155,19 @@ static void memory_manager_union_free_blocks(block_meta_data_t *first, block_met
     if(second->next){
         second->next->prev = first;
     } 
+}
+
+/* Checks if VM Page is empty or not ie data block empty*/
+vm_bool_t memory_manager_vm_page_empty(vm_page_t *vm_page){
+    if(vm_page->next == NULL && vm_page->prev == NULL && vm_page->block_meta_data.is_free == MM_TRUE){
+        return MM_TRUE;
+    }
+    return MM_FALSE;
+}
+
+/* Returns size of free Data block of an empty page */
+static inline uint32_t memory_manager_max_space_allocatable_memory(int units){
+    return(uint32_t)((SYSTEM_PAGE_SIZE*units) - offset_of(vm_page_t, page_memory));
 }
 
 /* Prints all the families registered with LMM */
