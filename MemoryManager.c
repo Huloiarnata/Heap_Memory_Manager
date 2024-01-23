@@ -20,7 +20,7 @@ vm_page_t *allocate_vm_page(virtual_memory_page_family_t* virtual_memory_page_fa
 
     vm_page->block_meta_data.block_size = memory_manager_max_space_allocatable_memory(1);
     vm_page->block_meta_data.offset = offset_of(vm_page_t, block_meta_data);
-
+    init_glthread(&vm_page->block_meta_data.priority_thread_glue);
     vm_page->next = NULL;
     vm_page->prev = NULL;
 
@@ -34,6 +34,21 @@ vm_page_t *allocate_vm_page(virtual_memory_page_family_t* virtual_memory_page_fa
     virtual_memory_page_family->first_page->prev = vm_page;
     virtual_memory_page_family->first_page = vm_page;
     return vm_page;
+}
+
+/* Function invoked from user space for dynamic memory allocation */
+void *xcalloc(char* struct_name, int units){
+    //check for existence.
+    virtual_memory_page_family_t* pg_family = lookup_page_family_by_name(struct_name);
+    if(!pg_family){
+        printf("Error! Structure not registered with memory manager.\n");
+        return NULL;
+    }
+
+    if(units*pg_family->struct_size> MAX_PAGE_ALLOCATABLE_MEMORY(1)){
+        printf("Error! Memory requested exceeds page size\n");
+        return NULL;
+    }
 }
 
 /* To delete and free VM Page */
@@ -109,6 +124,7 @@ void memory_manager_instantiate_new_page_family(char *struct_name, uint32_t stru
         first_vm_page_for_families->next = NULL;
         strncpy(first_vm_page_for_families->virtual_memory_page_family[0].struct_name, struct_name, MM_MAX_STRUCT_NAME);
         first_vm_page_for_families->virtual_memory_page_family[0].struct_size = struct_size;
+        init_glthread(&first_vm_page_for_families->virtual_memory_page_family[0].free_block_priority_list_head);
         return;
     }
 
@@ -180,4 +196,25 @@ void memory_manager_print_registered_page_families(){
             printf("Page Family : %s, Size = %u\n", vm_page_family_curr->struct_name, vm_page_family_curr->struct_size);
         } Iterate_Page_Families_End(vm_page_families_curr, vm_page_family_curr);
     }
+}
+
+/* Free block comparison function for comparing free data block size and arranging them. */
+static int free_data_blocks_comparison_funct(void *_block_meta_data1, void *_block_meta_data2){
+    block_meta_data_t *block_meta_data1 = (block_meta_data_t*)_block_meta_data1;
+    block_meta_data_t *block_meta_data2 = (block_meta_data_t*)_block_meta_data2;
+
+    if(block_meta_data1->block_size>block_meta_data2->block_size){
+        return -1;
+    }else if(block_meta_data1->block_size<block_meta_data2->block_size){
+        return 1;
+    }
+    return 0;
+}
+
+static void memory_manager_add_free_block_meta_data_to_free_block_list(virtual_memory_page_family_t* vm_page_family, block_meta_data_t* free_block){
+    assert(free_block->is_free==MM_TRUE);
+    glthread_priority_insert(&vm_page_family->free_block_priority_list_head,
+            &free_block->priority_thread_glue,
+            free_data_blocks_comparison_funct,
+            offset_of(block_meta_data_t, priority_thread_glue));
 }

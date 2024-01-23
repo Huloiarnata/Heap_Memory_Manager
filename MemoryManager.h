@@ -21,6 +21,7 @@ typedef struct virtual_memory_page_family{
     char  struct_name[MM_MAX_STRUCT_NAME];
     uint32_t struct_size;
     vm_page_t *first_page;
+    glthread_t free_block_priority_list_head;
 } virtual_memory_page_family_t;
 
 
@@ -41,9 +42,9 @@ typedef struct block_meta_data{
     glthread_t priority_thread_glue;
     struct block_meta_data *next;
     struct block_meta_data *prev;
-
-
 }block_meta_data_t;
+
+GLTHREAD_TO_STRUCT(glthread_to_block_meta_data, block_meta_data_t, priority_thread_glue, glthread_t);
 
 typedef struct vm_page_{
     struct vm_page_ *next;
@@ -60,14 +61,14 @@ typedef struct vm_page_{
     ((void * )((char *)block_meta_data_ptr - block_meta_data_ptr->offset))
 
 #define NEXT_META_BLOCK(block_meta_data_ptr)                \
-    (block_meta_data_ptr->next_block)
+    (block_meta_data_ptr->next)
 
 #define NEXT_META_BLOCK_BY_SIZE(block_meta_data_ptr)        \
     (block_meta_data_t *)((char *)(block_meta_data_ptr + 1) \
         + block_meta_data_ptr->block_size)
 
 #define PREV_META_BLOCK(block_meta_data_ptr)    \
-    (block_meta_data_ptr->prev_block)
+    (block_meta_data_ptr->prev)
 
 /* This macros handles allocation of free space upon xmalloc. */
 #define memory_manager_bind_block_for_allocation(allocated_meta_block, free_meta_block){\
@@ -90,13 +91,31 @@ typedef struct vm_page_{
 (SYSTEM_PAGE_SIZE - sizeof(virtual_memory_page_families_t*)/\
 sizeof(virtual_memory_page_family_t))
 
-/* Looping Macro Begin for iteration of VM_Page*/
+/* To get the largest node containing highest memory size */
+static inline block_meta_data_t* mm_get_biggest_free_block_page_family(virtual_memory_page_family_t* vm_page_family){
+    glthread_t *biggest_free_block_glue = vm_page_family->free_block_priority_list_head.right;
+    if(biggest_free_block_glue){
+        return glthread_to_block_meta_data(biggest_free_block_glue);
+    }
+    return NULL;
+}
+
+/* Looping Macro Begin for iteration of VM_Page */
 #define Iterate_VM_Page_Begin(virtual_memory_page_family_ptr, curr){\
     curr = virtual_memory_page_family_ptr->first_page;\
     vm_page_t *next = NULL;\
-    for(;curr;curr=next){\
+    for(; curr; curr=next){\
         next = curr->next;
-    #define Iterative_VM_PAge_END(virtual_memory_page_family_ptr, curr)\
+    #define Iterative_VM_Page_End(virtual_memory_page_family_ptr, curr)\
+    }}
+
+/* Looping Macro Begin for iterating of VM_Block */
+#define Iterate_VM_Page_All_Blocks_Begin(virtual_memory_page_ptr, curr){\
+    curr = virtual_memory_page_ptr->block_meta_data;\
+    block_meta_data_t* next = NULL;\
+    for(; curr; curr=next){\
+        next = NEXT_META_BLOCK(curr);
+    #define Iterate_VM_Page_All_Blocks_End(virtual_memory_page_ptr, curr)\
     }}
 
 /* Looping Macro Begin for iterating family within Families */
