@@ -6,6 +6,7 @@
 #include <unistd.h>   // Include <unistd.h> for getpagesize()
 #include <sys/mman.h>
 #include "MemoryManager.h"
+#include "css.h"
 
 /* Global variable to hold systems page size */
 static size_t SYSTEM_PAGE_SIZE = 0;
@@ -101,30 +102,6 @@ static block_meta_data_t *mm_allocate_free_data_block(virtual_memory_page_family
     if(status){
         return biggest_block_meta_data;
     }
-    return NULL;
-}
-
-/* Function invoked from user space for dynamic memory allocation */
-void *xcalloc(char* struct_name, int units){
-    //check for existence.
-    virtual_memory_page_family_t* pg_family = lookup_page_family_by_name(struct_name);
-    if(!pg_family){
-        printf("Error! Structure not registered with memory manager.\n");
-        return NULL;
-    }
-
-    if(units*pg_family->struct_size> MAX_PAGE_ALLOCATABLE_MEMORY(1)){
-        printf("Error! Memory requested exceeds page size\n");
-        return NULL;
-    }
-
-    block_meta_data_t *free_block_meta_data = NULL;
-    free_block_meta_data = mm_allocate_free_data_block(pg_family, units*pg_family->struct_size);
-    if(free_block_meta_data){
-         memset((char *)(free_block_meta_data + 1), 0, 
-         free_block_meta_data->block_size);
-         return  (void *)(free_block_meta_data + 1);
-    } 
     return NULL;
 }
 
@@ -287,8 +264,7 @@ static int free_data_blocks_comparison_funct(void *_block_meta_data1, void *_blo
     return 0;
 }
 
-static vm_page_t *
-mm_family_new_page_add(virtual_memory_page_family_t *vm_page_family){
+static vm_page_t * mm_family_new_page_add(virtual_memory_page_family_t *vm_page_family){
 
     vm_page_t *vm_page = allocate_vm_page(vm_page_family);
 
@@ -301,6 +277,30 @@ mm_family_new_page_add(virtual_memory_page_family_t *vm_page_family){
             vm_page_family, &vm_page->block_meta_data);
 
     return vm_page;
+}
+
+/* Function invoked from user space for dynamic memory allocation */
+void *xcalloc(char* struct_name, int units){
+    //check for existence.
+    virtual_memory_page_family_t* pg_family = lookup_page_family_by_name(struct_name);
+    if(!pg_family){
+        printf("Error! Structure not registered with memory manager.\n");
+        return NULL;
+    }
+
+    if(units*pg_family->struct_size> MAX_PAGE_ALLOCATABLE_MEMORY(1)){
+        printf("Error! Memory requested exceeds page size\n");
+        return NULL;
+    }
+
+    block_meta_data_t *free_block_meta_data = NULL;
+    free_block_meta_data = mm_allocate_free_data_block(pg_family, units*pg_family->struct_size);
+    if(free_block_meta_data){
+         memset((char *)(free_block_meta_data + 1), 0, 
+         free_block_meta_data->block_size);
+         return  (void *)(free_block_meta_data + 1);
+    } 
+    return NULL;
 }
 
 static void memory_manager_add_free_block_meta_data_to_free_block_list(virtual_memory_page_family_t* vm_page_family, block_meta_data_t* free_block){
