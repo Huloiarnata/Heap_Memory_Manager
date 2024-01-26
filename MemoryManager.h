@@ -1,7 +1,7 @@
 /* Libraries & Macros */
 #ifndef __MM__
 #define MM_MAX_STRUCT_NAME 32 //Max size of structure name.
-
+#include<stdio.h>
 #include <stdint.h>
 #include "gluethread/glthread.h"
 
@@ -106,12 +106,12 @@ static inline block_meta_data_t* mm_get_biggest_free_block_page_family(virtual_m
     vm_page_t *next = NULL;\
     for(; curr; curr=next){\
         next = curr->next;
-    #define Iterative_VM_Page_End(virtual_memory_page_family_ptr, curr)\
+    #define Iterate_VM_Page_End(virtual_memory_page_family_ptr, curr)\
     }}
 
 /* Looping Macro Begin for iterating of VM_Block */
 #define Iterate_VM_Page_All_Blocks_Begin(virtual_memory_page_ptr, curr){\
-    curr = virtual_memory_page_ptr->block_meta_data;\
+    curr = &virtual_memory_page_ptr->block_meta_data;\
     block_meta_data_t* next = NULL;\
     for(; curr; curr=next){\
         next = NEXT_META_BLOCK(curr);
