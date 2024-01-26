@@ -1,11 +1,11 @@
 #include "UserAPI_MemoryManager.h"
-#include <stdint.h>
 #include <stdio.h>
-/* Structure Samples to test Linux Memory Manager */
-typedef struct emp_{
+
+typedef struct emp_ {
+
     char name[32];
     uint32_t emp_id;
-}emp_t;
+} emp_t;
 
 typedef struct student_ {
 
@@ -17,13 +17,15 @@ typedef struct student_ {
     struct student_ *next;
 } student_t;
 
-int main(int argc, char **argv){
-    memory_manager_init();
-    MM_Register_Structure(emp_t);
-    MM_Register_Structure(student_t);
-    memory_manager_print_registered_page_families();
+int
+main(int argc, char **argv){
 
     int wait;
+    mm_init();
+    MM_REG_STRUCT(emp_t);
+    MM_REG_STRUCT(student_t);
+    mm_print_registered_page_families();
+    
     emp_t *emp1 = XCALLOC(1, emp_t);
     emp_t *emp2 = XCALLOC(1, emp_t);
     emp_t *emp3 = XCALLOC(1, emp_t);
@@ -53,5 +55,5 @@ int main(int argc, char **argv){
     printf(" \nSCENARIO 3 : *********** \n");
     mm_print_memory_usage(0);
     mm_print_block_usage();
-    return 0;
+    return 0; 
 }
