@@ -1,9 +1,11 @@
 /* Libraries & Macros */
 #ifndef __MM__
+#define __MM__
 #define MM_MAX_STRUCT_NAME 32 //Max size of structure name.
+
 #include<stdio.h>
 #include <stdint.h>
-#include "gluethread/glthread.h"
+#include "glthread.h"
 
 // enum for memory occupied or free.
 typedef enum{
@@ -11,13 +13,38 @@ typedef enum{
     MM_TRUE
 } vm_bool_t;
 
+typedef struct block_meta_data{
+    vm_bool_t is_free;
+    uint32_t offset;
+    uint32_t block_size;
+    glthread_t priority_thread_glue;
+    struct block_meta_data *next;
+    struct block_meta_data *prev;
+}block_meta_data_t;
 
+GLTHREAD_TO_STRUCT(glthread_to_block_meta_data, block_meta_data_t, priority_thread_glue, glthread_t);
+
+
+#define offset_of(container_structure, field_name)  \
+    ((size_t)&(((container_structure *)0)->field_name))
+
+struct virtual_memory_page_family_;
+
+typedef struct vm_page_{
+    struct vm_page_ *next;
+    struct vm_page_ *prev;
+    struct virtual_memory_page_family_ *pg_family; /*back pointer*/
+    block_meta_data_t block_meta_data; // meta block for vm page.
+    char page_memory[0]; // points to the start of data block.
+} vm_page_t;
+
+vm_bool_t mm_is_vm_page_empty(vm_page_t *vm_page);
 /*
 Structure to store registration information from application in userspace.
 This will help kernel to know how much memory to allocate or release for application.
 Registration Info: Structure Name, Structure Size.
 */
-typedef struct virtual_memory_page_family{
+typedef struct virtual_memory_page_family_{
     char  struct_name[MM_MAX_STRUCT_NAME];
     uint32_t struct_size;
     vm_page_t *first_page;
@@ -35,27 +62,10 @@ typedef struct virtual_memory_page_families{
     virtual_memory_page_family_t virtual_memory_page_family[0];
 } virtual_memory_page_families_t;
 
-typedef struct block_meta_data{
-    vm_bool_t is_free;
-    uint32_t offset;
-    uint32_t block_size;
-    glthread_t priority_thread_glue;
-    struct block_meta_data *next;
-    struct block_meta_data *prev;
-}block_meta_data_t;
-
-GLTHREAD_TO_STRUCT(glthread_to_block_meta_data, block_meta_data_t, priority_thread_glue, glthread_t);
-
-typedef struct vm_page_{
-    struct vm_page_ *next;
-    struct vm_page_ *prev;
-    struct vm_page_family_ *pg_family; /*back pointer*/
-    block_meta_data_t block_meta_data; // meta block for vm page.
-    char page_memory[0]; // points to the start of data block.
-} vm_page_t;
-
-#define offset_of(container_structure, field_name)  \
-    ((size_t)&(((container_structure *)0)->field_name))
+virtual_memory_page_family_t *lookup_page_family_by_name(char *struct_name);
+vm_page_t *allocate_vm_page(virtual_memory_page_family_t* virtual_memory_page_family);
+vm_bool_t memory_manager_vm_page_empty(vm_page_t *vm_page);
+void mm_vm_page_delete_and_free(vm_page_t *vm_page);
 
 #define MM_GET_PAGE_FROM_META_BLOCK(block_meta_data_ptr)    \
     ((void * )((char *)block_meta_data_ptr - block_meta_data_ptr->offset))
@@ -88,8 +98,8 @@ typedef struct vm_page_{
 }
 /* Max Number of family in vm_Families */
 #define MAX_Families_PER_VM_PAGE   \
-(SYSTEM_PAGE_SIZE - sizeof(virtual_memory_page_families_t*)/\
-sizeof(virtual_memory_page_family_t))
+    (SYSTEM_PAGE_SIZE - sizeof(virtual_memory_page_families_t*)/\
+    sizeof(virtual_memory_page_family_t))
 
 /* To get the largest node containing highest memory size */
 static inline block_meta_data_t* mm_get_biggest_free_block_page_family(virtual_memory_page_family_t* vm_page_family){
@@ -126,7 +136,6 @@ static inline block_meta_data_t* mm_get_biggest_free_block_page_family(virtual_m
         curr++, _count++){
 
 #define Iterate_Page_Families_End(virtual_memory_page_Families_ptr, curr) }}
-
 
 #endif/**/
 

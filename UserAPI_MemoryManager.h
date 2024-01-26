@@ -4,9 +4,10 @@ Acts as an interface between LMM and Application.*/
 #ifndef __UAPI_MM__
 #define __UAPI_MM__
 #include <stdint.h>
+#include "MemoryManager.h"
 
 void *xcalloc(char *struct_name, int units);
-//void xfree(void* ptr);
+void *xfree(void* ptr);
 
 #define XCALLOC(units, struct_name)\
     (xcalloc(#struct_name, units))
@@ -25,6 +26,7 @@ void memory_manager_instantiate_new_page_family(char *struct_name, uint32_t stru
 void mm_print_memory_usage(char* struct_name);
 /* memory_manager_print_registered_page_families() */
 void memory_manager_print_registered_page_families();
+vm_bool_t memory_manager_vm_page_empty(vm_page_t *vm_page);
 void mm_print_block_usage();
 
 
