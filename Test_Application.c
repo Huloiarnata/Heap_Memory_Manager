@@ -18,5 +18,17 @@ int main(int argc, char **argv){
     MM_Register_Structure(emp_t);
     MM_Register_Structure(student_t);
     memory_manager_print_registered_page_families();
+
+    XCALLOC(1, emp_t);
+    XCALLOC(1, emp_t);
+    XCALLOC(1, emp_t);
+    
+    XCALLOC(1, student_t);
+    XCALLOC(1, student_t);
+
+    // printing after i/p from user.
+    scanf("\n");
+    mm_print_memory_usage(0);
+    mm_print_block_usage();
     return 0;
 }
