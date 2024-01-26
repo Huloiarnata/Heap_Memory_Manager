@@ -72,11 +72,11 @@ typedef struct vm_page_{
 
 /* This macros handles allocation of free space upon xmalloc. */
 #define memory_manager_bind_block_for_allocation(allocated_meta_block, free_meta_block){\
-    free_meta_block->prev_block = allocated_meta_block;\
-    free_meta_block->next_block = allocated_meta_block->next_block;\
-    allocated_meta_block->next_block = free_meta_block;\
-    if(free_meta_block->next_block){\
-        free_meta_block->next_block->prev_block = free_meta_block;\
+    free_meta_block->prev = allocated_meta_block;\
+    free_meta_block->next = allocated_meta_block->next;\
+    allocated_meta_block->next = free_meta_block;\
+    if(free_meta_block->next){\
+        free_meta_block->next->prev = free_meta_block;\
     }\
 }
 
